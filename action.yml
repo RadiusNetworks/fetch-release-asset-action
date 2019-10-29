@@ -1,0 +1,15 @@
+name: 'Release Repo'
+description: 'Publish a release to an external release repo'
+inputs:
+  file:
+    description: The file to download from the release
+    required: true
+  token:
+    description: The GitHub token used access the release
+    required: true
+outputs:
+  path:
+    description: 'Full path to the downloaded file'
+runs:
+  using: 'node12'
+  main: 'main.js'
