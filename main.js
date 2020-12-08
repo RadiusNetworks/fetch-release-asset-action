@@ -6,25 +6,36 @@ const path = require('path');
 const fs = require('fs');
 const request = require('request');
 
-function findAsset(assets, name){
+function findAsset(assets, re){
+  list = []
+  var regex = RegExp(re);
   for(var i in assets){
-    if(assets[i].name == name) {
-      return assets[i].url
+    if(regex.test(assets[i].name)) {
+      list.push({
+        url: assets[i].url,
+        name: assets[i].name
+      })
     }
   }
-  throw `${name} not found in assets`;
+  if (list.length == 0) {
+    throw `${name} not found in assets`;
+  }
+
+  return list;
+
 }
 
-async function downloadAsset(url, token) {
-  var filePath = path.join(os.tmpdir(), "asset.zip");
+async function downloadAsset(asset, token, dir) {
+  var filePath = path.resolve(dir, asset.name);
   const options = {
-    url: url,
+    url: asset.url,
     headers: {
       'User-Agent': 'request',
       'Accept': 'application/octet-stream',
       'Authorization': `token ${token}`
     }
   };
+  console.log(`Downloading ${asset.name}`);
   var stream = request(options).pipe(fs.createWriteStream(filePath))
 
   return new Promise((resolve) => {
@@ -32,22 +43,42 @@ async function downloadAsset(url, token) {
   });
 }
 
-async function main() {
-  const fileName = core.getInput('file');
-  const token = core.getInput('token');
-  //const octokit = new GitHub(token);
+function createDir(dir) {
+  if (!dir) {
+    dir = os.tmpdir();
+  }
+  if (!fs.existsSync(dir)){
+    fs.mkdirSync(dir);
+  }
 
+  return dir
+}
+
+async function main() {
+  const regex = core.getInput('regex');
+  const token = core.getInput('token');
+  const downloadPath = createDir(core.getInput('dir'));
+
+  const octokit = new GitHub(token);
   if (! context.payload.release) {
     core.warning("Not running action as a release, skipping.");
     return;
   }
-
   const release = context.payload.release;
 
-  var assetUrl = findAsset(release.assets, fileName)
-  var path = await downloadAsset(assetUrl, token)
+  //const octokit = new GitHub(process.env.GITHUB_TOKEN);
+  //var response = await octokit.repos.getReleaseByTag({ owner: "RadiusNetworks", repo: "iris-ios", tag: "app-v0.1" })
+  //var release = response.data
 
-  core.setOutput('path', path);
+  var assets = findAsset(release.assets, regex)
+
+  paths = [];
+  for (var i in assets) {
+    var newPath = await downloadAsset(assets[i], token, downloadPath)
+    paths.push(newPath);
+  }
+  core.setOutput('asset_paths',paths.join("\n"));
+  core.setOutput('dir',path.resolve(downloadPath));
 }
 
 main().catch(error.handle);

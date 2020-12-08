@@ -1,15 +1,19 @@
 name: 'Release Repo'
 description: 'Publish a release to an external release repo'
 inputs:
-  file:
-    description: The file to download from the release
-    required: true
+  regex:
+    description: Regex to match on the name of the files to be downloaded
+    required: false
+    default: '.*'
+  dir:
+    description: Directory to download the files into. Defaults to a temp directory.
+    required: false
   token:
     description: The GitHub token used access the release
     required: true
 outputs:
-  path:
-    description: 'Full path to the downloaded file'
+  paths:
+    description: 'A newline seperated list of paths to all the downloaded assets'
 runs:
   using: 'node12'
   main: 'main.js'
